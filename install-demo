@@ -1,0 +1,64 @@
+#!/bin/bash
+
+echo "================ installing mysql"
+
+yum -y install https://dev.mysql.com/get/mysql80-community-release-el7-5.noarch.rpm || exit 1
+yum -y install mysql-community-server || exit 1
+
+echo "================ configuring mysql"
+# skip-grant-tables implies skip-networking,
+# allowing unauthenticated local access to mysql
+
+echo "skip-grant-tables" >> /etc/my.cnf
+
+echo "================ starting mysqld as a systemd service"
+
+systemctl start mysqld || exit 1
+systemctl status mysqld || exit 1
+
+echo "================ enabling mysqld to restart after reboot"
+systemctl enable mysqld || exit 1
+
+echo "================ installing nodejs"
+
+curl -sL https://rpm.nodesource.com/setup_16.x | bash - || exit 1
+yum install -y nodejs || exit 1
+node --version || exit 1
+
+echo "================ allowing node to receive network connections"
+/usr/sbin/setcap 'cap_net_bind_service=+ep' /usr/bin/node || exit 1
+
+echo "================ installing npm dependencies"
+cd /home/ec2-user/crypto-authn-demo-sql || exit 1
+npm install . || exit 1
+
+echo "================ configuring the hostname of the demo"
+# the hostname is used in the link that verifies the email address
+# and creates the cryptographic credential
+
+read -p "please enter the public IP address of the EC2 instance, or a
+domain name mapping to the address: " host
+
+cd /home/ec2-user/crypto-authn-demo-sql/views || exit 1
+sed -i s/HOSTNAME/$host/ message-sent.handlebars || exit 1
+
+echo "================ installing the demo as a systemd service"
+
+cd /home/ec2-user/crypto-authn-demo-sql || exit 1
+cp demo.service /etc/systemd/system || exit 1
+
+echo "================ starting the demo"
+
+systemctl start demo || exit 1
+systemctl status demo || exit 1
+
+echo "================ enabling the demo to restart after reboot"
+
+systemctl enable demo || exit 1 // restart after reboot
+
+echo " "
+echo "The demo can also be started manually by running"
+echo "/home/ec2-user/crypto-authn-demo-sql/demo.mjs"
+echo " "
+echo "INSTALLATION SUCCESSFUL" 
+

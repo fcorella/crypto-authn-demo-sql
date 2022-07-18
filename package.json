@@ -1,0 +1,18 @@
+{
+    "type": "module",
+    "name": "crypto-authn-demo",
+    "version": "1.0.0",
+    "description": "Demo of cryptographic authentication using pjcl",
+    "main": "demo.mjs",
+    "repository": "github:fcorella/crypto-authn-demo",
+    "author": "Francisco Corella (https://pomcor.com)",
+    "license": "MIT",
+    "dependencies": {
+        "body-parser": "^1.20.0",
+        "cookie-parser": "^1.4.6",
+        "express": "^4.18.1",
+        "express-handlebars": "^6.0.6",
+        "middleware-stack-printer": "^0.0.1",
+        "mysql2": "^2.3.3"
+    }
+}
