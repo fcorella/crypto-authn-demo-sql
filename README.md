@@ -4,7 +4,7 @@ This is a demo of [passwordless cryptographic
 authentication](https://pomcor.com/2022/07/18/passwordless-authentication-for-the-consumer-space/)
 in a web application, using an sql backend database.  A companion
 repository
-[fcorella/crypto-authn-demo-nosql](../fcorella/crypto-authn-demo-nosql)
+[fcorella/crypto-authn-demo-nosql](https://github.com/fcorella/crypto-authn-demo-nosql.git)
 demonstrates how the same functionality can be provided by a nosql
 backend.
 
