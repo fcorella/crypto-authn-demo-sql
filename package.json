@@ -13,6 +13,7 @@
         "express": "^4.18.1",
         "express-handlebars": "^6.0.6",
         "middleware-stack-printer": "^0.0.1",
-        "mysql2": "^2.3.3"
+        "mysql2": "^2.3.3",
+	"pjcl": "1.0.0"
     }
 }

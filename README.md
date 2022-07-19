@@ -24,9 +24,10 @@ front end.
 ### How to run the demo
 
 To run the demo, launch a free-tier eligible EC2 server running
-Amazon Linux on AWS, clone the repository into a directory
+Amazon Linux on AWS, install git (sudo yum -y install git),
+clone the repository into a directory
 /home/ec2-user/crypto-authn-demo-sql, change directory to
-crypto-authn-demo-sql, and run the bash script ./install-demo.
+crypto-authn-demo-sql, and run the bash script install-demo (sudo ./install-demo).
 The script will ask you for the public IP address of the server or a
 domain name that maps to the IP address, to be used in a link for
 creating a cryptographic credential in a browser.  The script will
