@@ -20,6 +20,41 @@ import {
     pjclECDSAVerifyMsg
 } from 'pjcl';
 
+import { SendEmailCommand } from "@aws-sdk/client-ses";
+import { SESClient } from "@aws-sdk/client-ses";
+
+// install_demo fixes the values of the following constants
+//
+const hostname = "HOSTNAME";
+const realOrSimulated = "REALEMAIL";
+const senderAddress = "SENDERADDRESS";
+
+// sendEmail is a function that is only created when using real rather than simulated email
+//
+let sendEmail;
+if (realOrSimulated == "REALEMAIL") {
+    const sesClient = new SESClient({ region: "us-east-1" });
+    const createSendEmailCommand = (toAddress, fromAddress, subject, body) => {
+	return new SendEmailCommand({
+	    Destination: {ToAddresses: [toAddress]},
+	    Message: {
+		Body: {Html: {Charset: "UTF-8", Data: body}},
+		Subject: {Charset: "UTF-8", Data: subject}
+	    },
+	    Source: fromAddress
+	});
+    };
+    sendEmail = async (toAddress, fromAddress, subject, body) => {
+	const sendEmailCommand = createSendEmailCommand(toAddress, fromAddress, subject, body);
+	try {
+	    return await sesClient.send(sendEmailCommand);
+	} catch (e) {
+	    console.error("Failed to send email:" + e);
+	    return e;
+	}
+    };
+}
+
 let pjclCopiedToStatic = false;
 let browserEntropyCopiedToStatic = false;
 
@@ -267,7 +302,7 @@ app.post('/register-user',function(req,res) {
     const firstname = req.body.firstname;
     const lastname = req.body.lastname;
     if (
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1 ||
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1 ||
         firstname.search(/^[A-Za-z]+$/) == -1 ||
         lastname.search(/^[A-Za-z]+$/) == -1
     ) {
@@ -298,11 +333,29 @@ app.post('/register-user',function(req,res) {
 	    res.redirect(303, "/email-taken.html");
 	}
 	else {
-	    res.render("message-sent", {
-		email: email,
-		emailVerifCodeHex: emailVerifCodeHex,
-		keyConfirmationChallengeHex: keyConfirmationChallengeHex
-	    });
+	    if (realOrSimulated == "SIMULATED") {
+		res.render("message-sent", {
+		    hostname: hostname,
+		    email: email,
+		    emailVerifCodeHex: emailVerifCodeHex,
+		    keyConfirmationChallengeHex: keyConfirmationChallengeHex
+		});
+	    }
+	    else {
+		const subject = "Email verification and credential creation link";
+		const body =
+		      `<p>
+Open the link below in a browser to verify your email address, create
+a cryptographic credential in that browser, and log in.  
+</p>
+<p>
+<a href="https://${hostname}/create-credential?email=${email}&emailVerifCodeHex=${emailVerifCodeHex}&keyConfirmationChallengeHex=${keyConfirmationChallengeHex}">Verify email address and create credential</a>
+</p>`
+		sendEmail(email, senderAddress, subject, body);
+		res.render("message-sent-real-email", {
+		    senderAddress: senderAddress
+		});
+	    }
 	};
     });
 });
@@ -316,7 +369,7 @@ app.get('/create-credential',function(req,res) {
     const keyConfirmationChallengeHex = req.query.keyConfirmationChallengeHex;
     if (
 	// input validation
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1 ||
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1 ||
         emailVerifCodeHex.search(/^[A-Fa-f0-9]+$/) == -1 ||
         keyConfirmationChallengeHex.search(/^[A-Fa-z0-9]+$/) == -1
     ) {
@@ -344,7 +397,7 @@ app.post('/register-credential',function(req,res) {
     const sigHex_s = req.body.sigHex_s;
     if (
 	// input validation
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1 ||
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1 ||
         emailVerifCodeHex.search(/^[A-Fa-f0-9]+$/) == -1 ||
         pubKeyHex_Q_x.search(/^[A-Fa-z0-9]+$/) == -1 ||
         pubKeyHex_Q_y.search(/^[A-Fa-z0-9]+$/) == -1 ||
@@ -469,7 +522,7 @@ app.post('/log-in',function(req,res) {
     // input validation
     // the error should have been caught by the frontend
     //
-    if (email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1) {
+    if (email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1) {
         res.redirect(303, "/email-address-not-found.html");
         return;
     }
@@ -517,7 +570,7 @@ function verifySignature(email, req, res) {
     const destination = req.body.destination;
     if (
   	// input validation
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1 ||
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1 ||
         pubKeyHex_Q_x.search(/^[A-Fa-f0-9]+$/) == -1 ||
         pubKeyHex_Q_y.search(/^[A-Fa-f0-9]+$/) == -1 ||
         sigHex_r.search(/^[A-Fa-f0-9]+$/) == -1 ||
@@ -590,7 +643,7 @@ function verifySignature(email, req, res) {
 function offerCredentialCreationLink(email, req, res) {
     if (
   	// input validation
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1
     ) {
         res.redirect(303, "/authentication-failure5.html");
         return;
@@ -605,7 +658,7 @@ app.get('/send-link',function(req,res) {
     if (
   	// input validation
 	// the link request must have been tampered with
-        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+$/) == -1
+        email.search(/^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*\.[A-Za-z]+$/) == -1
     ) {
         res.redirect(303, "/invalid-link-request.html");
         return;
@@ -631,11 +684,29 @@ app.get('/send-link',function(req,res) {
             res.redirect(303, "/email-address-not-found.html");
         }
 	else {
-	    res.render("message-sent", {
-		email: email,
-		emailVerifCodeHex: emailVerifCodeHex,
-		keyConfirmationChallengeHex: keyConfirmationChallengeHex
-	    });
+	    if (realOrSimulated == "SIMULATED") {
+		res.render("message-sent", {
+		    hostname: hostname,
+		    email: email,
+		    emailVerifCodeHex: emailVerifCodeHex,
+		    keyConfirmationChallengeHex: keyConfirmationChallengeHex
+		});
+	    }
+	    else {
+		const subject = "Email verification and credential creation link";
+		const body =
+		      `<p>
+Open the link below in a browser to verify your email address, create
+a cryptographic credential in that browser, and log in.  
+</p>
+<p>
+<a href="https://${hostname}/create-credential?email=${email}&emailVerifCodeHex=${emailVerifCodeHex}&keyConfirmationChallengeHex=${keyConfirmationChallengeHex}">Verify email address and create credential</a>
+</p>`
+		sendEmail(email, senderAddress, subject, body);
+		res.render("message-sent-real-email", {
+		    senderAddress: senderAddress
+		});
+	    }
 	};
     });
 });
