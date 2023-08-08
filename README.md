@@ -1,3 +1,5 @@
+# Cross-browser Passwordless Authentication with an SQL Backend
+
 ### Functionality
 
 This is a demo of [passwordless cryptographic
